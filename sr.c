@@ -264,7 +264,6 @@ void B_input(struct pkt packet)
   int buffer_index;
   int in_window = 0;
 
-  
   /* if not corrupted */
   if (!IsCorrupted(packet)) {
     
@@ -294,18 +293,13 @@ void B_input(struct pkt packet)
       
       /* If this is the expected packet, deliver it and consecutive buffered packets */
       if (packet.seqnum == expectedseqnum) {
-        /* Deliver the expected packet first */
-        tolayer5(B, packet.payload);
-        buffer_status[buffer_index] = 0;  /* Clear the status for this packet */
-        expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
-        
-        /* Slide the window by shifting all subsequent packets forward */
-        for (i = 0; i < WINDOWSIZE - 1; i++) {
-          rcv_buffer[i] = rcv_buffer[i + 1];
-          buffer_status[i] = buffer_status[i + 1];
+        /* Deliver this packet if we haven't already buffered it */
+        if (buffer_index != 0) {  
+          tolayer5(B, packet.payload);
         }
-        buffer_status[WINDOWSIZE - 1] = 0;
-        rcv_base = (rcv_base + 1) % SEQSPACE;
+        
+        /* Always clear the current position */
+        buffer_status[buffer_index] = 0;
         
         /* Deliver consecutive buffered packets */
         while (buffer_status[0] == 1) {
@@ -318,6 +312,12 @@ void B_input(struct pkt packet)
           }
           buffer_status[WINDOWSIZE - 1] = 0;
           
+          rcv_base = (rcv_base + 1) % SEQSPACE;
+          expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
+        }
+        
+        /* Update expected sequence number and receive base if needed */
+        if (buffer_index == 0) {
           rcv_base = (rcv_base + 1) % SEQSPACE;
           expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
         }
