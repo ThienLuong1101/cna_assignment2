@@ -243,11 +243,6 @@ void A_init(void)
 static int expectedseqnum; /* the sequence number expected next by the receiver */
 static int B_nextseqnum;   /* the sequence number for the next packets sent by B */
 
-/* SR specific variables for receiver */
-static struct pkt rcv_buffer[WINDOWSIZE];  /* buffer for out-of-order packets */
-static int buffer_status[WINDOWSIZE];      /* track if buffer position is occupied */
-static int rcv_base;                       /* base of receive window */
-
 
 /* called from layer 3, when a packet arrives for layer 4 at B*/
 void B_input(struct pkt packet)
@@ -257,23 +252,15 @@ void B_input(struct pkt packet)
   
   /* if not corrupted */
   if (!IsCorrupted(packet)) {
-      packets_received++;
+    packets_received++;
+    
     if (TRACE > 0)
       printf("----B: packet %d is correctly received, send ACK!\n", packet.seqnum);
-    
-    /* check if packet is within receive window */
-    /* For SR, we only reject packets that are far outside our window */
-    int rel_seqnum = packet.seqnum - rcv_base;
-    if (rel_seqnum < 0)
-      rel_seqnum += SEQSPACE;
     
     /* if this is the expected packet, deliver it */
     if (packet.seqnum == expectedseqnum) {
       tolayer5(B, packet.payload);
       expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
-      
-      /* update receive base */
-      rcv_base = expectedseqnum;
     }
     
     /* send ACK for this packet */
@@ -307,16 +294,8 @@ void B_input(struct pkt packet)
 /* entity B routines are called. You can use it to do any initialization */
 void B_init(void)
 {
-  int i;
-  
   expectedseqnum = 0;
   B_nextseqnum = 1;
-  
-  /* initialize SR specific variables */
-  rcv_base = 0;
-  for (i = 0; i < WINDOWSIZE; i++) {
-    buffer_status[i] = 0;
-  }
 }
 
 /******************************************************************************

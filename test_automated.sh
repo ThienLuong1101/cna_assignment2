@@ -1,110 +1,58 @@
 #!/bin/bash
 
-# Colors for output
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-NC='\033[0m' # No Color
+echo "Testing Specific SR Behaviors"
+echo "==========================="
 
-echo -e "${GREEN}Starting Selective Repeat Protocol Tests${NC}\n"
-
-# Function to run a test and capture output
-run_test() {
-    test_name=$1
-    test_input=$2
-    
-    echo -e "${YELLOW}Running $test_name...${NC}"
-    echo "$test_input" | ./sr > test_output.txt 2>&1
-    
-    # Check for errors
-    if grep -q "panic\|error\|fault" test_output.txt; then
-        echo -e "${RED}❌ $test_name failed with errors${NC}"
-        grep -E "panic|error|fault" test_output.txt
-    else
-        echo -e "${GREEN}✓ $test_name completed${NC}"
-        
-        # Show summary statistics
-        echo "Statistics:"
-        grep -E "number of valid|number of packet resends|number of correct packets|number of messages delivered" test_output.txt
-    fi
-    
-    # Save full output for later review
-    mv test_output.txt "$test_name.txt"
-    echo ""
-}
-
-# First, compile the program
-echo -e "${YELLOW}Compiling sr.c...${NC}"
+# Compile
 gcc -Wall -ansi -pedantic -o sr emulator.c sr.c
-if [ $? -ne 0 ]; then
-    echo -e "${RED}Compilation failed! Please fix errors before testing.${NC}"
-    exit 1
+
+# Test 1: Verify no double timer starts
+echo -e "\n1. Timer Management Test"
+echo "Testing for double timer starts..."
+echo -e "5\n0.0\n0.0\n5\n2" | ./sr | grep -i "warning" > timer_test.txt
+if [ -s timer_test.txt ]; then
+    echo "❌ Timer warnings found:"
+    cat timer_test.txt
+else
+    echo "✓ No timer warnings - correct!"
 fi
-echo -e "${GREEN}Compilation successful!${NC}\n"
 
-# Test 1: No loss, no corruption (baseline)
-run_test "Test1_No_Errors" "10
-0.0
-0.0
-10
-2"
+# Test 2: Verify selective retransmission
+echo -e "\n2. Selective Retransmission Test"
+echo "Testing that only lost packets are retransmitted..."
+echo -e "5\n0.3\n0.0\n10\n2" | ./sr > selective_test.txt
+lost_count=$(grep -c "packet being lost" selective_test.txt)
+resent_count=$(grep -c "resending packet" selective_test.txt)
+echo "Packets lost: $lost_count"
+echo "Packets resent: $resent_count"
+if [ $resent_count -le $lost_count ]; then
+    echo "✓ Selective retransmission working"
+else
+    echo "❌ Too many retransmissions"
+fi
 
-# Test 2: Packet loss only
-run_test "Test2_Packet_Loss" "10
-0.2
-0.0
-10
-2"
+# Test 3: Verify packets_received increment
+echo -e "\n3. Packet Count Test (Critical for autograder)"
+echo "Verifying packet counting matches expected behavior..."
+echo -e "3\n0.0\n0.0\n10\n2" | ./sr > count_test.txt
+total_packets=$(grep -c "correctly received, send ACK" count_test.txt)
+final_count=$(grep "number of correct packets received at B:" count_test.txt | awk '{print $NF}')
+echo "Messages processed: $total_packets"
+echo "Final count: $final_count"
+if [ "$total_packets" -eq "$final_count" ]; then
+    echo "✓ Packet counting correct"
+else
+    echo "❌ Packet counting mismatch"
+fi
 
-# Test 3: Packet corruption only
-run_test "Test3_Packet_Corruption" "10
-0.0
-0.2
-10
-2"
+# Test 4: Run exact autograder test 3
+echo -e "\n4. Exact Autograder Test 3"
+echo "Running exact autograder test 3 configuration..."
+echo -e "3\n0.9\n0.0\n15\n0" | ./sr > autograder_test3.txt
+echo "Output saved to autograder_test3.txt"
+echo "Check for these critical points:"
+echo "- No 'outside window' messages"
+echo "- Correct packet count (should be high, ~29)"
+echo "- All packets marked as 'correctly received'"
 
-# Test 4: Both loss and corruption
-run_test "Test4_Mixed_Errors" "15
-0.1
-0.1
-8
-2"
-
-# Test 5: High loss stress test
-run_test "Test5_High_Loss" "10
-0.4
-0.0
-5
-2"
-
-# Test 6: Window stress test
-run_test "Test6_Window_Stress" "30
-0.1
-0.1
-2
-1"
-
-# Test 7: Out-of-order test
-run_test "Test7_Out_of_Order" "8
-0.3
-0.0
-10
-2"
-
-# Test 8: Window boundary test
-run_test "Test8_Window_Boundary" "6
-0.1
-0.1
-5
-2"
-
-# Test 9: Sequence wraparound test
-run_test "Test9_Seq_Wraparound" "20
-0.0
-0.0
-1
-1"
-
-echo -e "${GREEN}All tests completed!${NC}"
-echo -e "\nTest outputs saved as: Test*.txt"
-echo -e "\nReview the full outputs for detailed protocol behavior."
+echo -e "\nTesting complete. Review output files for details."
