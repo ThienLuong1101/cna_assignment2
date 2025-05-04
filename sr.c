@@ -126,6 +126,7 @@ void A_input(struct pkt packet)
   int i;
   int j, idx;
   int next_timer_found;
+  int found = 0;
 
   /* if received ACK is not corrupted */ 
   if (!IsCorrupted(packet)) {
@@ -139,6 +140,8 @@ void A_input(struct pkt packet)
       
       if (buffer[buffer_index].seqnum == packet.acknum && 
           ack_status[buffer_index] == UNACKED) {
+        
+        found = 1;  /* Mark that we found the packet */
         
         /* mark packet as acknowledged */
         ack_status[buffer_index] = ACKED;
@@ -176,13 +179,17 @@ void A_input(struct pkt packet)
         break;
       }
     }
+    
+    /* If we didn't find the packet, it's a duplicate ACK */
+    if (!found && TRACE > 0) {
+      printf("----A: duplicate ACK received, do nothing!\n");
+    }
   }
   else {
     if (TRACE > 0)
       printf ("----A: corrupted ACK is received, do nothing!\n");
   }
 }
-
 /* called when A's timer goes off */
 void A_timerinterrupt(void)
 {
@@ -244,26 +251,80 @@ static int expectedseqnum; /* the sequence number expected next by the receiver 
 static int B_nextseqnum;   /* the sequence number for the next packets sent by B */
 
 
-/* called from layer 3, when a packet arrives for layer 4 at B*/
+/* SR specific variables for receiver */
+static struct pkt rcv_buffer[WINDOWSIZE];  /* buffer for out-of-order packets */
+static int buffer_status[WINDOWSIZE];      /* track if buffer position is occupied */
+static int rcv_base;                       /* base of receive window */
+
 void B_input(struct pkt packet)
 {
   struct pkt sendpkt;
   int i;
+  int rel_seqnum;
+  int buffer_index;
+  int in_window = 0;
+
   
   /* if not corrupted */
   if (!IsCorrupted(packet)) {
-    packets_received++;
     
-    if (TRACE > 0)
-      printf("----B: packet %d is correctly received, send ACK!\n", packet.seqnum);
-    
-    /* if this is the expected packet, deliver it */
-    if (packet.seqnum == expectedseqnum) {
-      tolayer5(B, packet.payload);
-      expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
+    /* Check if packet is within receive window */
+    rel_seqnum = packet.seqnum - rcv_base;
+    if (rel_seqnum < 0)
+      rel_seqnum += SEQSPACE;
+      
+    if (rel_seqnum < WINDOWSIZE) {
+      in_window = 1;
     }
     
-    /* send ACK for this packet */
+    if (in_window) {
+      /* Packet is within receive window */
+      
+      if (TRACE > 0)
+        printf("----B: packet %d is correctly received, send ACK!\n", packet.seqnum);
+      
+      buffer_index = rel_seqnum;
+      
+      /* Store packet if not already buffered - only count if it's new */
+      if (buffer_status[buffer_index] == 0) {
+        packets_received++;  /* Only increment for new packets */
+        rcv_buffer[buffer_index] = packet;
+        buffer_status[buffer_index] = 1;
+      }
+      
+      /* If this is the expected packet, deliver it and consecutive buffered packets */
+      if (packet.seqnum == expectedseqnum) {
+        tolayer5(B, packet.payload);
+        buffer_status[buffer_index] = 0;
+        expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
+        
+        /* Deliver consecutive buffered packets */
+        while (buffer_status[0] == 1) {
+          tolayer5(B, rcv_buffer[0].payload);
+          
+          /* Shift buffer */
+          for (i = 0; i < WINDOWSIZE - 1; i++) {
+            rcv_buffer[i] = rcv_buffer[i + 1];
+            buffer_status[i] = buffer_status[i + 1];
+          }
+          buffer_status[WINDOWSIZE - 1] = 0;
+          
+          rcv_base = (rcv_base + 1) % SEQSPACE;
+          expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
+        }
+      }
+    }
+    else {
+      /* packet is outside window */
+      if (TRACE > 0)
+        printf("----B: packet %d is outside window, ignore\n", packet.seqnum);
+      
+      /* Still send ACK for old packets (may be duplicate) */
+      sendpkt.acknum = packet.seqnum;
+      goto send_ack;
+    }
+    
+    /* Send ACK for received packet */
     sendpkt.acknum = packet.seqnum;
   }
   else {
@@ -275,12 +336,13 @@ void B_input(struct pkt packet)
     return;
   }
 
+  send_ack:
   /* create ACK packet */
   sendpkt.seqnum = B_nextseqnum;
   B_nextseqnum = (B_nextseqnum + 1) % 2;
     
-  /* we don't have any data to send.  fill payload with 0's */
-  for ( i=0; i<20 ; i++ ) 
+  /* we don't have any data to send. fill payload with 0's */
+  for (i = 0; i < 20; i++) 
     sendpkt.payload[i] = '0';  
 
   /* compute checksum */
@@ -289,15 +351,19 @@ void B_input(struct pkt packet)
   /* send out ACK packet */
   tolayer3 (B, sendpkt);
 }
-
-/* the following routine will be called once (only) before any other */
-/* entity B routines are called. You can use it to do any initialization */
 void B_init(void)
 {
+  int i;
+  
   expectedseqnum = 0;
   B_nextseqnum = 1;
+  
+  /* initialize SR specific variables */
+  rcv_base = 0;
+  for (i = 0; i < WINDOWSIZE; i++) {
+    buffer_status[i] = 0;
+  }
 }
-
 /******************************************************************************
  * The following functions need be completed only for bi-directional messages *
  *****************************************************************************/
