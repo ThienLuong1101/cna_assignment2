@@ -255,62 +255,68 @@ static int B_nextseqnum;   /* the sequence number for the next packets sent by B
 static struct pkt rcv_buffer[WINDOWSIZE];  /* buffer for out-of-order packets */
 static int buffer_status[WINDOWSIZE];      /* track if buffer position is occupied */
 static int rcv_base;                       /* base of receive window */
-
 void B_input(struct pkt packet)
 {
   struct pkt sendpkt;
   int i;
   int rel_seqnum;
   int buffer_index;
-  int in_window = 0;
 
-  
   /* if not corrupted */
   if (!IsCorrupted(packet)) {
     
     /* Check if packet is within receive window */
-    rel_seqnum = packet.seqnum - rcv_base;
-    if (rel_seqnum < 0)
-      rel_seqnum += SEQSPACE;
+    rel_seqnum = (packet.seqnum - rcv_base + SEQSPACE) % SEQSPACE;
       
+    /* Check if packet falls within the window */
     if (rel_seqnum < WINDOWSIZE) {
-      in_window = 1;
-    }
-    
-    if (in_window) {
-      /* Packet is within receive window */
       packets_received++;  /* Count all correctly received packets */
       
       if (TRACE > 0)
         printf("----B: packet %d is correctly received, send ACK!\n", packet.seqnum);
       
+      /* Calculate buffer index - use circular buffer */
       buffer_index = rel_seqnum;
       
-      /* Store packet if not already buffered (don't buffer duplicates) */
+      /* Store packet if not already buffered (avoid duplicates) */
       if (buffer_status[buffer_index] == 0) {
         rcv_buffer[buffer_index] = packet;
         buffer_status[buffer_index] = 1;
-      }
-      
-      /* If this is the expected packet, deliver it and consecutive buffered packets */
-      if (packet.seqnum == expectedseqnum) {
-        tolayer5(B, packet.payload);
-        buffer_status[buffer_index] = 0;
-        expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
         
-        /* Deliver consecutive buffered packets */
-        while (buffer_status[0] == 1) {
-          tolayer5(B, rcv_buffer[0].payload);
+        /* If this is the expected packet, deliver it and check for consecutive packets */
+        if (packet.seqnum == expectedseqnum) {
+          /* Deliver the packet */
+          tolayer5(B, packet.payload);
           
-          /* Shift buffer */
-          for (i = 0; i < WINDOWSIZE - 1; i++) {
-            rcv_buffer[i] = rcv_buffer[i + 1];
-            buffer_status[i] = buffer_status[i + 1];
-          }
-          buffer_status[WINDOWSIZE - 1] = 0;
+          /* Mark as delivered */
+          buffer_status[buffer_index] = 0;
           
-          rcv_base = (rcv_base + 1) % SEQSPACE;
+          /* Advance expected sequence number */
           expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
+          
+          /* Deliver consecutive buffered packets */
+          i = 1; /* Start from next position */
+          while (i < WINDOWSIZE && buffer_status[i] == 1) {
+            tolayer5(B, rcv_buffer[i].payload);
+            buffer_status[i] = 0;
+            expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
+            i++;
+          }
+          
+          /* Slide the receive window */
+          rcv_base = expectedseqnum;
+          
+          /* Shift the buffer to the left for all delivered packets */
+          int shift_amount = i; /* Number of packets delivered */
+          for (int j = 0; j < WINDOWSIZE - shift_amount; j++) {
+            rcv_buffer[j] = rcv_buffer[j + shift_amount];
+            buffer_status[j] = buffer_status[j + shift_amount];
+          }
+          
+          /* Clear the vacated positions */
+          for (int j = WINDOWSIZE - shift_amount; j < WINDOWSIZE; j++) {
+            buffer_status[j] = 0;
+          }
         }
       }
     }
@@ -318,13 +324,9 @@ void B_input(struct pkt packet)
       /* packet is outside window */
       if (TRACE > 0)
         printf("----B: packet %d is outside window, ignore\n", packet.seqnum);
-      
-      /* Still send ACK for old packets (may be duplicate) */
-      sendpkt.acknum = packet.seqnum;
-      goto send_ack;
     }
     
-    /* Send ACK for received packet */
+    /* Always send ACK for received packet - SR acknowledges individual packets */
     sendpkt.acknum = packet.seqnum;
   }
   else {
@@ -332,7 +334,6 @@ void B_input(struct pkt packet)
     return;
   }
 
-  send_ack:
   /* create ACK packet */
   sendpkt.seqnum = B_nextseqnum;
   B_nextseqnum = (B_nextseqnum + 1) % 2;
