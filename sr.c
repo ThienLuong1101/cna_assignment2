@@ -279,15 +279,15 @@ void B_input(struct pkt packet)
     
     if (in_window) {
       /* Packet is within receive window */
+      packets_received++;  /* Count all correctly received packets */
       
       if (TRACE > 0)
         printf("----B: packet %d is correctly received, send ACK!\n", packet.seqnum);
       
       buffer_index = rel_seqnum;
       
-      /* Store packet if not already buffered - only count if it's new */
+      /* Store packet if not already buffered (don't buffer duplicates) */
       if (buffer_status[buffer_index] == 0) {
-        packets_received++;  /* Only increment for new packets */
         rcv_buffer[buffer_index] = packet;
         buffer_status[buffer_index] = 1;
       }
@@ -328,7 +328,6 @@ void B_input(struct pkt packet)
     sendpkt.acknum = packet.seqnum;
   }
   else {
-    
     /* do not send ACK for corrupted packet */
     return;
   }
