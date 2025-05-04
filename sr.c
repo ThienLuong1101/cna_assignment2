@@ -328,9 +328,6 @@ void B_input(struct pkt packet)
     sendpkt.acknum = packet.seqnum;
   }
   else {
-    /* packet is corrupted, ignore it */
-    if (TRACE > 0) 
-      printf("----B: packet corrupted, ignore\n");
     
     /* do not send ACK for corrupted packet */
     return;
