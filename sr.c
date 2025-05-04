@@ -259,6 +259,8 @@ void B_input(struct pkt packet)
 {
   struct pkt sendpkt;
   int i;
+  int j;
+  int shift_amount;
   int rel_seqnum;
   int buffer_index;
 
@@ -307,14 +309,14 @@ void B_input(struct pkt packet)
           rcv_base = expectedseqnum;
           
           /* Shift the buffer to the left for all delivered packets */
-          int shift_amount = i; /* Number of packets delivered */
-          for (int j = 0; j < WINDOWSIZE - shift_amount; j++) {
+          shift_amount = i; /* Number of packets delivered */
+          for (j = 0; j < WINDOWSIZE - shift_amount; j++) {
             rcv_buffer[j] = rcv_buffer[j + shift_amount];
             buffer_status[j] = buffer_status[j + shift_amount];
           }
           
           /* Clear the vacated positions */
-          for (int j = WINDOWSIZE - shift_amount; j < WINDOWSIZE; j++) {
+          for (j = WINDOWSIZE - shift_amount; j < WINDOWSIZE; j++) {
             buffer_status[j] = 0;
           }
         }
