@@ -294,25 +294,33 @@ void B_input(struct pkt packet)
       
       /* If this is the expected packet, deliver it and consecutive buffered packets */
       if (packet.seqnum == expectedseqnum) {
+        /* deliver the in-order packet */
         tolayer5(B, packet.payload);
         buffer_status[buffer_index] = 0;
+  
+        /* advance expected and window base together */
         expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
-        
-        /* Deliver consecutive buffered packets */
+        rcv_base       = expectedseqnum;  
+  
+        /* now slide in any consecutively buffered packets */
         while (buffer_status[0] == 1) {
+          /* deliver the next one at buffer[0] */
           tolayer5(B, rcv_buffer[0].payload);
-          
-          /* Shift buffer */
+  
+          /* shift buffer & status arrays left by one */
           for (i = 0; i < WINDOWSIZE - 1; i++) {
-            rcv_buffer[i] = rcv_buffer[i + 1];
+            rcv_buffer[i]   = rcv_buffer[i + 1];
             buffer_status[i] = buffer_status[i + 1];
           }
+          /* clear the new last slot */
           buffer_status[WINDOWSIZE - 1] = 0;
-          
-          rcv_base = (rcv_base + 1) % SEQSPACE;
+  
+          /* bump base and expected in lock‐step */
+          rcv_base       = (rcv_base + 1) % SEQSPACE;
           expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
         }
       }
+  
     }
     else {
       /* packet is outside window */
