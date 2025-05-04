@@ -175,9 +175,6 @@ void A_input(struct pkt packet)
         
         break;
       }
-      else
-          if (TRACE > 0)
-        printf ("----A: duplicate ACK received, do nothing!\n");
     }
   }
   else {
@@ -257,62 +254,30 @@ void B_input(struct pkt packet)
 {
   struct pkt sendpkt;
   int i;
-  int rel_seqnum;
-  int buffer_index;
-  int deliver_index;
   
   /* if not corrupted */
   if (!IsCorrupted(packet)) {
+      packets_received++;
+    if (TRACE > 0)
+      printf("----B: packet %d is correctly received, send ACK!\n", packet.seqnum);
     
-    /* compute relative sequence number within receive window */
-    rel_seqnum = packet.seqnum - rcv_base;
+    /* check if packet is within receive window */
+    /* For SR, we only reject packets that are far outside our window */
+    int rel_seqnum = packet.seqnum - rcv_base;
     if (rel_seqnum < 0)
       rel_seqnum += SEQSPACE;
     
-    /* check if packet is within receive window */
-    if (rel_seqnum < WINDOWSIZE) {
+    /* if this is the expected packet, deliver it */
+    if (packet.seqnum == expectedseqnum) {
+      tolayer5(B, packet.payload);
+      expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
       
-      packets_received++;
-      
-      if (TRACE > 0)
-      printf("----B: packet %d is correctly received, send ACK!\n",packet.seqnum);
-      
-      /* buffer the packet */
-      buffer_index = (rcv_base + rel_seqnum) % WINDOWSIZE;
-      rcv_buffer[buffer_index] = packet;
-      buffer_status[buffer_index] = 1;
-      
-      /* send ACK for this packet */
-      sendpkt.acknum = packet.seqnum;
-      
-      /* if this is the expected packet, deliver it and any consecutive buffered packets */
-      if (packet.seqnum == expectedseqnum) {
-        tolayer5(B, packet.payload);
-        
-        buffer_status[buffer_index] = 0;
-        expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
-        
-        /* deliver any consecutive buffered packets */
-        while (buffer_status[expectedseqnum % WINDOWSIZE] == 1) {
-          deliver_index = expectedseqnum % WINDOWSIZE;
-          tolayer5(B, rcv_buffer[deliver_index].payload);
-         
-          buffer_status[deliver_index] = 0;
-          expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
-        }
-        
-        /* update receive base */
-        rcv_base = expectedseqnum;
-      }
+      /* update receive base */
+      rcv_base = expectedseqnum;
     }
-    else {
-      /* packet is outside receive window, ignore it */
-      if (TRACE > 0)
-        printf("----B: packet %d is outside window, ignore\n", packet.seqnum);
     
-      /* still send ACK (might be duplicate) */
-      sendpkt.acknum = packet.seqnum;
-    }
+    /* send ACK for this packet */
+    sendpkt.acknum = packet.seqnum;
   }
   else {
     /* packet is corrupted, ignore it */
