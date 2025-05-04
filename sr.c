@@ -294,8 +294,19 @@ void B_input(struct pkt packet)
       
       /* If this is the expected packet, deliver it and consecutive buffered packets */
       if (packet.seqnum == expectedseqnum) {
+        /* Deliver this packet immediately if it is at the base of the window */
         tolayer5(B, packet.payload);
-        buffer_status[buffer_index] = 0;
+        
+        /* Check if we need to shift buffer */
+        if (buffer_index == 0) {
+          /* Shift buffer */
+          for (i = 0; i < WINDOWSIZE - 1; i++) {
+            rcv_buffer[i] = rcv_buffer[i + 1];
+            buffer_status[i] = buffer_status[i + 1];
+          }
+          buffer_status[WINDOWSIZE - 1] = 0;
+          rcv_base = (rcv_base + 1) % SEQSPACE;
+        }
         expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
         
         /* Deliver consecutive buffered packets */
@@ -328,6 +339,7 @@ void B_input(struct pkt packet)
     sendpkt.acknum = packet.seqnum;
   }
   else {
+   
     /* do not send ACK for corrupted packet */
     return;
   }
