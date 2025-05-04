@@ -210,7 +210,6 @@ void A_input(struct pkt packet)
 /* called when A's timer goes off */
 void A_timerinterrupt(void)
 {
-
   if (TRACE > 0)
     printf("----A: time out,resend packets!\n");
 
@@ -278,7 +277,6 @@ void B_input(struct pkt packet)
 {
   struct pkt sendpkt;
   int i;
-  int j;
   int rel_seqnum;
   int buffer_index;
   int in_window = 0;
@@ -308,42 +306,30 @@ void B_input(struct pkt packet)
       if (buffer_status[buffer_index] == 0) {
         rcv_buffer[buffer_index] = packet;
         buffer_status[buffer_index] = 1;
+      }
+      
+      /* If this is the expected packet, deliver it and consecutive buffered packets */
+      if (packet.seqnum == expectedseqnum) {
+        /* Deliver the expected packet */
+        tolayer5(B, packet.payload);
+        buffer_status[buffer_index] = 0;
+        expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
         
-        /* If this is the expected packet, deliver it and consecutive buffered packets */
-        if (packet.seqnum == expectedseqnum) {
-          /* Deliver the expected packet */
-          tolayer5(B, packet.payload);
-          buffer_status[buffer_index] = 0;
-          expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
-          
-          /* Deliver consecutive buffered packets */
-          i = buffer_index + 1;
-          while (i < WINDOWSIZE && buffer_status[i] == 1) {
+        /* Deliver consecutive buffered packets */
+        for (i = 0; i < WINDOWSIZE; i++) {
+          if (buffer_status[i] == 1) {
+            /* Found a consecutive buffered packet */
             tolayer5(B, rcv_buffer[i].payload);
             buffer_status[i] = 0;
             expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
-            i++;
-          }
-          
-          /* Slide the receive window for all delivered packets */
-          rcv_base = expectedseqnum;
-          
-          /* Shift buffer to the left for delivered packets */
-          for (j = 0; j < WINDOWSIZE - (i - buffer_index); j++) {
-            if (j < buffer_index) {
-              rcv_buffer[j] = rcv_buffer[j];
-              buffer_status[j] = buffer_status[j];
-            } else {
-              rcv_buffer[j] = rcv_buffer[j + (i - buffer_index)];
-              buffer_status[j] = buffer_status[j + (i - buffer_index)];
-            }
-          }
-          
-          /* Clear the vacated positions */
-          for (j = WINDOWSIZE - (i - buffer_index); j < WINDOWSIZE; j++) {
-            buffer_status[j] = 0;
+          } else {
+            /* No more consecutive packets */
+            break;
           }
         }
+        
+        /* Update receive window base */
+        rcv_base = expectedseqnum;
       }
     }
     else {
