@@ -255,7 +255,6 @@ static int B_nextseqnum;   /* the sequence number for the next packets sent by B
 static struct pkt rcv_buffer[WINDOWSIZE];  /* buffer for out-of-order packets */
 static int buffer_status[WINDOWSIZE];      /* track if buffer position is occupied */
 static int rcv_base;                       /* base of receive window */
-
 void B_input(struct pkt packet)
 {
   struct pkt sendpkt;
@@ -263,7 +262,6 @@ void B_input(struct pkt packet)
   int rel_seqnum;
   int buffer_index;
   int in_window = 0;
-
   
   /* if not corrupted */
   if (!IsCorrupted(packet)) {
@@ -294,33 +292,42 @@ void B_input(struct pkt packet)
       
       /* If this is the expected packet, deliver it and consecutive buffered packets */
       if (packet.seqnum == expectedseqnum) {
-        /* deliver the in-order packet */
         tolayer5(B, packet.payload);
         buffer_status[buffer_index] = 0;
-  
-        /* advance expected and window base together */
         expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
-        rcv_base       = expectedseqnum;  
-  
-        /* now slide in any consecutively buffered packets */
-        while (buffer_status[0] == 1) {
-          /* deliver the next one at buffer[0] */
-          tolayer5(B, rcv_buffer[0].payload);
-  
-          /* shift buffer & status arrays left by one */
+        
+        /* Deliver consecutive buffered packets */
+        /* First find the new expected packet's position in buffer */
+        rel_seqnum = expectedseqnum - rcv_base;
+        if (rel_seqnum < 0)
+          rel_seqnum += SEQSPACE;
+          
+        /* Check if the new expected packet is already buffered */
+        buffer_index = rel_seqnum;
+        
+        while (buffer_index < WINDOWSIZE && buffer_status[buffer_index] == 1) {
+          tolayer5(B, rcv_buffer[buffer_index].payload);
+          buffer_status[buffer_index] = 0;
+          expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
+          
+          /* Get next expected packet position */
+          rel_seqnum = expectedseqnum - rcv_base;
+          if (rel_seqnum < 0)
+            rel_seqnum += SEQSPACE;
+          buffer_index = rel_seqnum;
+        }
+        
+        /* Slide window base if possible */
+        while (buffer_status[0] == 0 && expectedseqnum != rcv_base) {
+          /* Shift buffer */
           for (i = 0; i < WINDOWSIZE - 1; i++) {
-            rcv_buffer[i]   = rcv_buffer[i + 1];
+            rcv_buffer[i] = rcv_buffer[i + 1];
             buffer_status[i] = buffer_status[i + 1];
           }
-          /* clear the new last slot */
           buffer_status[WINDOWSIZE - 1] = 0;
-  
-          /* bump base and expected in lock‐step */
-          rcv_base       = (rcv_base + 1) % SEQSPACE;
-          expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
+          rcv_base = (rcv_base + 1) % SEQSPACE;
         }
       }
-  
     }
     else {
       /* packet is outside window */
