@@ -175,6 +175,9 @@ void A_input(struct pkt packet)
         
         break;
       }
+      else
+          if (TRACE > 0)
+        printf ("----A: duplicate ACK received, do nothing!\n");
     }
   }
   else {
@@ -270,7 +273,7 @@ void B_input(struct pkt packet)
     if (rel_seqnum < WINDOWSIZE) {
       
       if (TRACE > 0)
-        printf("----B: packet %d is within receive window\n", packet.seqnum);
+      printf("----B: packet %d is correctly received, send ACK!\n",packet.seqnum);
       
       packets_received++;
       
