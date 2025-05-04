@@ -243,39 +243,88 @@ void A_init(void)
 static int expectedseqnum; /* the sequence number expected next by the receiver */
 static int B_nextseqnum;   /* the sequence number for the next packets sent by B */
 
+/* SR specific variables for receiver */
+static struct pkt rcv_buffer[WINDOWSIZE];  /* buffer for out-of-order packets */
+static int buffer_status[WINDOWSIZE];      /* track if buffer position is occupied */
+static int rcv_base;                       /* base of receive window */
+
 
 /* called from layer 3, when a packet arrives for layer 4 at B*/
 void B_input(struct pkt packet)
 {
   struct pkt sendpkt;
   int i;
-
-  /* if not corrupted and received packet is in order */
-  if  ( (!IsCorrupted(packet))  && (packet.seqnum == expectedseqnum) ) {
-    if (TRACE > 0)
-      printf("----B: packet %d is correctly received, send ACK!\n",packet.seqnum);
-    packets_received++;
-
-    /* deliver to receiving application */
-    tolayer5(B, packet.payload);
-
-    /* send an ACK for the received packet */
-    sendpkt.acknum = expectedseqnum;
-
-    /* update state variables */
-    expectedseqnum = (expectedseqnum + 1) % SEQSPACE;        
+  int rel_seqnum;
+  int buffer_index;
+  int deliver_index;
+  
+  /* if not corrupted */
+  if (!IsCorrupted(packet)) {
+    
+    /* compute relative sequence number within receive window */
+    rel_seqnum = packet.seqnum - rcv_base;
+    if (rel_seqnum < 0)
+      rel_seqnum += SEQSPACE;
+    
+    /* check if packet is within receive window */
+    if (rel_seqnum < WINDOWSIZE) {
+      
+      if (TRACE > 0)
+        printf("----B: packet %d is within receive window\n", packet.seqnum);
+      
+      packets_received++;
+      
+      /* buffer the packet */
+      buffer_index = (rcv_base + rel_seqnum) % WINDOWSIZE;
+      rcv_buffer[buffer_index] = packet;
+      buffer_status[buffer_index] = 1;
+      
+      /* send ACK for this packet */
+      sendpkt.acknum = packet.seqnum;
+      
+      /* if this is the expected packet, deliver it and any consecutive buffered packets */
+      if (packet.seqnum == expectedseqnum) {
+        tolayer5(B, packet.payload);
+        if (TRACE > 0)
+          printf("----B: delivering packet %d to layer 5\n", packet.seqnum);
+        
+        buffer_status[buffer_index] = 0;
+        expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
+        
+        /* deliver any consecutive buffered packets */
+        while (buffer_status[expectedseqnum % WINDOWSIZE] == 1) {
+          deliver_index = expectedseqnum % WINDOWSIZE;
+          tolayer5(B, rcv_buffer[deliver_index].payload);
+          if (TRACE > 0)
+            printf("----B: delivering buffered packet %d to layer 5\n", rcv_buffer[deliver_index].seqnum);
+          
+          buffer_status[deliver_index] = 0;
+          expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
+        }
+        
+        /* update receive base */
+        rcv_base = expectedseqnum;
+      }
+    }
+    else {
+      /* packet is outside receive window, ignore it */
+      if (TRACE > 0)
+        printf("----B: packet %d is outside receive window, ignore\n", packet.seqnum);
+      
+      /* still send ACK (might be duplicate) */
+      sendpkt.acknum = packet.seqnum;
+    }
   }
   else {
-    /* packet is corrupted or out of order resend last ACK */
+    /* packet is corrupted, ignore it */
     if (TRACE > 0) 
-      printf("----B: packet corrupted or not expected sequence number, resend ACK!\n");
-    if (expectedseqnum == 0)
-      sendpkt.acknum = SEQSPACE - 1;
-    else
-      sendpkt.acknum = expectedseqnum - 1;
+      printf("----B: packet corrupted, ignore\n");
+    
+    /* do not send ACK for corrupted packet */
+    return;
   }
 
-  /* create packet */
+  /* create ACK packet */
   sendpkt.seqnum = B_nextseqnum;
   B_nextseqnum = (B_nextseqnum + 1) % 2;
     
@@ -283,10 +332,10 @@ void B_input(struct pkt packet)
   for ( i=0; i<20 ; i++ ) 
     sendpkt.payload[i] = '0';  
 
-  /* computer checksum */
+  /* compute checksum */
   sendpkt.checksum = ComputeChecksum(sendpkt); 
 
-  /* send out packet */
+  /* send out ACK packet */
   tolayer3 (B, sendpkt);
 }
 
@@ -294,8 +343,16 @@ void B_input(struct pkt packet)
 /* entity B routines are called. You can use it to do any initialization */
 void B_init(void)
 {
+  int i;
+  
   expectedseqnum = 0;
   B_nextseqnum = 1;
+  
+  /* initialize SR specific variables */
+  rcv_base = 0;
+  for (i = 0; i < WINDOWSIZE; i++) {
+    buffer_status[i] = 0;
+  }
 }
 
 /******************************************************************************
@@ -311,4 +368,3 @@ void B_output(struct msg message)
 void B_timerinterrupt(void)
 {
 }
-

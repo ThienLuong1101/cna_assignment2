@@ -98,3 +98,13 @@ I scanned the window from the front for the first unacknowledged packet.
 Once found, I retransmitted it, restarted the timer for it, and updated the timer’s tracking variable.
 
 The idea was always to resend the oldest needed packet — nothing more — keeping bandwidth usage low.
+
+B_input()
+
+I tracked expected sequence numbers and stored out-of-order arrivals.
+
+I acknowledged every valid packet.
+
+If the packet was in order, I delivered it and any consecutively buffered ones that followed.
+
+This allowed out-of-order ACKs and ensured the application received only properly ordered data, just as SR promises.
