@@ -272,10 +272,10 @@ void B_input(struct pkt packet)
     /* check if packet is within receive window */
     if (rel_seqnum < WINDOWSIZE) {
       
+      packets_received++;
+      
       if (TRACE > 0)
       printf("----B: packet %d is correctly received, send ACK!\n",packet.seqnum);
-      
-      packets_received++;
       
       /* buffer the packet */
       buffer_index = (rcv_base + rel_seqnum) % WINDOWSIZE;
@@ -307,6 +307,8 @@ void B_input(struct pkt packet)
     }
     else {
       /* packet is outside receive window, ignore it */
+      if (TRACE > 0)
+        printf("----B: packet %d is outside window, ignore\n", packet.seqnum);
     
       /* still send ACK (might be duplicate) */
       sendpkt.acknum = packet.seqnum;
