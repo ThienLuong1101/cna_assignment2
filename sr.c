@@ -288,8 +288,6 @@ void B_input(struct pkt packet)
       /* if this is the expected packet, deliver it and any consecutive buffered packets */
       if (packet.seqnum == expectedseqnum) {
         tolayer5(B, packet.payload);
-        if (TRACE > 0)
-          printf("----B: delivering packet %d to layer 5\n", packet.seqnum);
         
         buffer_status[buffer_index] = 0;
         expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
@@ -298,9 +296,7 @@ void B_input(struct pkt packet)
         while (buffer_status[expectedseqnum % WINDOWSIZE] == 1) {
           deliver_index = expectedseqnum % WINDOWSIZE;
           tolayer5(B, rcv_buffer[deliver_index].payload);
-          if (TRACE > 0)
-            printf("----B: delivering buffered packet %d to layer 5\n", rcv_buffer[deliver_index].seqnum);
-          
+         
           buffer_status[deliver_index] = 0;
           expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
         }
@@ -311,9 +307,7 @@ void B_input(struct pkt packet)
     }
     else {
       /* packet is outside receive window, ignore it */
-      if (TRACE > 0)
-        printf("----B: packet %d is outside receive window, ignore\n", packet.seqnum);
-      
+    
       /* still send ACK (might be duplicate) */
       sendpkt.acknum = packet.seqnum;
     }
