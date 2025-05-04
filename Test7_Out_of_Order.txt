@@ -1,0 +1,264 @@
+-----  Stop and Wait Network Simulator Version 1.1 -------- 
+
+Enter the number of messages to simulate: Enter  packet loss probability [enter 0.0 for no loss]:Enter packet corruption probability [0.0 for no corruption]:If you want loss or corruption to only occur in one direction, choose the direction: 0 A->B, 1 A<-B, 2 A<->B (both directions) :Enter average time between messages from sender's layer5 [ > 0.0]:Enter TRACE:          GENERATE NEXT ARRIVAL: creating new arrival
+            INSERTEVENT: time is 0.000000
+            INSERTEVENT: future time will be 3.741148
+
+EVENT time: 3.741148,  type: 1, fromlayer5  entity: 0
+          GENERATE NEXT ARRIVAL: creating new arrival
+            INSERTEVENT: time is 3.741148
+            INSERTEVENT: future time will be 7.024968
+          MAINLOOP: data given to student: aaaaaaaaaaaaaaaaaaaa
+----A: New message arrives, send window is not full, send new messge to layer3!
+Sending packet 0 to layer 3
+          TOLAYER3: seq: 0, ack -1, check: 1939 aaaaaaaaaaaaaaaaaaaa
+          TOLAYER3: scheduling arrival on other side
+            INSERTEVENT: time is 3.741148
+            INSERTEVENT: future time will be 9.206244
+          START TIMER: starting timer at 3.741148
+            INSERTEVENT: time is 3.741148
+            INSERTEVENT: future time will be 19.741148
+
+EVENT time: 7.024968,  type: 1, fromlayer5  entity: 0
+          GENERATE NEXT ARRIVAL: creating new arrival
+            INSERTEVENT: time is 7.024968
+            INSERTEVENT: future time will be 9.853925
+          MAINLOOP: data given to student: bbbbbbbbbbbbbbbbbbbb
+----A: New message arrives, send window is not full, send new messge to layer3!
+Sending packet 1 to layer 3
+          TOLAYER3: seq: 1, ack -1, check: 1960 bbbbbbbbbbbbbbbbbbbb
+          TOLAYER3: scheduling arrival on other side
+            INSERTEVENT: time is 7.024968
+            INSERTEVENT: future time will be 11.387867
+
+EVENT time: 9.206244,  type: 2, fromlayer3  entity: 1
+----B: packet 0 is within receive window
+          TOLAYER5: data received by application at B: aaaaaaaaaaaaaaaaaaaa
+----B: delivering packet 0 to layer 5
+          TOLAYER3: packet being lost
+
+EVENT time: 9.853925,  type: 1, fromlayer5  entity: 0
+          GENERATE NEXT ARRIVAL: creating new arrival
+            INSERTEVENT: time is 9.853925
+            INSERTEVENT: future time will be 10.307478
+          MAINLOOP: data given to student: cccccccccccccccccccc
+----A: New message arrives, send window is not full, send new messge to layer3!
+Sending packet 2 to layer 3
+          TOLAYER3: seq: 2, ack -1, check: 1981 cccccccccccccccccccc
+          TOLAYER3: scheduling arrival on other side
+            INSERTEVENT: time is 9.853925
+            INSERTEVENT: future time will be 20.632404
+
+EVENT time: 10.307478,  type: 1, fromlayer5  entity: 0
+          GENERATE NEXT ARRIVAL: creating new arrival
+            INSERTEVENT: time is 10.307478
+            INSERTEVENT: future time will be 10.440463
+          MAINLOOP: data given to student: dddddddddddddddddddd
+----A: New message arrives, send window is not full, send new messge to layer3!
+Sending packet 3 to layer 3
+          TOLAYER3: seq: 3, ack -1, check: 2002 dddddddddddddddddddd
+          TOLAYER3: scheduling arrival on other side
+            INSERTEVENT: time is 10.307478
+            INSERTEVENT: future time will be 22.110825
+
+EVENT time: 10.440463,  type: 1, fromlayer5  entity: 0
+          GENERATE NEXT ARRIVAL: creating new arrival
+            INSERTEVENT: time is 10.440463
+            INSERTEVENT: future time will be 14.186430
+          MAINLOOP: data given to student: eeeeeeeeeeeeeeeeeeee
+----A: New message arrives, send window is not full, send new messge to layer3!
+Sending packet 4 to layer 3
+          TOLAYER3: seq: 4, ack -1, check: 2023 eeeeeeeeeeeeeeeeeeee
+          TOLAYER3: scheduling arrival on other side
+            INSERTEVENT: time is 10.440463
+            INSERTEVENT: future time will be 28.409239
+
+EVENT time: 11.387867,  type: 2, fromlayer3  entity: 1
+----B: packet 1 is within receive window
+          TOLAYER5: data received by application at B: bbbbbbbbbbbbbbbbbbbb
+----B: delivering packet 1 to layer 5
+          TOLAYER3: seq: 0, ack 1, check: 961 00000000000000000000
+          TOLAYER3: scheduling arrival on other side
+            INSERTEVENT: time is 11.387867
+            INSERTEVENT: future time will be 17.417517
+
+EVENT time: 14.186430,  type: 1, fromlayer5  entity: 0
+          GENERATE NEXT ARRIVAL: creating new arrival
+            INSERTEVENT: time is 14.186430
+            INSERTEVENT: future time will be 14.955426
+          MAINLOOP: data given to student: ffffffffffffffffffff
+----A: New message arrives, send window is not full, send new messge to layer3!
+Sending packet 5 to layer 3
+          TOLAYER3: seq: 5, ack -1, check: 2044 ffffffffffffffffffff
+          TOLAYER3: scheduling arrival on other side
+            INSERTEVENT: time is 14.186430
+            INSERTEVENT: future time will be 32.472843
+
+EVENT time: 14.955426,  type: 1, fromlayer5  entity: 0
+          GENERATE NEXT ARRIVAL: creating new arrival
+            INSERTEVENT: time is 14.955426
+            INSERTEVENT: future time will be 16.027826
+          MAINLOOP: data given to student: gggggggggggggggggggg
+----A: New message arrives, send window is full
+
+EVENT time: 16.027826,  type: 1, fromlayer5  entity: 0
+          GENERATE NEXT ARRIVAL: creating new arrival
+            INSERTEVENT: time is 16.027826
+            INSERTEVENT: future time will be 18.061960
+          MAINLOOP: data given to student: hhhhhhhhhhhhhhhhhhhh
+----A: New message arrives, send window is full
+
+EVENT time: 17.417517,  type: 2, fromlayer3  entity: 0
+----A: uncorrupted ACK 1 is received
+----A: ACK 1 is not a duplicate
+
+EVENT time: 18.061960,  type: 1, fromlayer5  entity: 0
+          FROM_LAYER5: no more messages to send: 
+
+EVENT time: 19.741148,  type: 0, timerinterrupt   entity: 0
+----A: time out,resend packets!
+---A: resending packet 0
+          TOLAYER3: packet being lost
+          START TIMER: starting timer at 19.741148
+            INSERTEVENT: time is 19.741148
+            INSERTEVENT: future time will be 35.741150
+
+EVENT time: 20.632404,  type: 2, fromlayer3  entity: 1
+----B: packet 2 is within receive window
+          TOLAYER5: data received by application at B: cccccccccccccccccccc
+----B: delivering packet 2 to layer 5
+          TOLAYER3: packet being lost
+
+EVENT time: 22.110825,  type: 2, fromlayer3  entity: 1
+----B: packet 3 is within receive window
+          TOLAYER5: data received by application at B: dddddddddddddddddddd
+----B: delivering packet 3 to layer 5
+          TOLAYER3: seq: 0, ack 3, check: 963 00000000000000000000
+          TOLAYER3: scheduling arrival on other side
+            INSERTEVENT: time is 22.110825
+            INSERTEVENT: future time will be 28.359844
+
+EVENT time: 28.359844,  type: 2, fromlayer3  entity: 0
+----A: uncorrupted ACK 3 is received
+----A: ACK 3 is not a duplicate
+
+EVENT time: 28.409239,  type: 2, fromlayer3  entity: 1
+----B: packet 4 is within receive window
+          TOLAYER5: data received by application at B: eeeeeeeeeeeeeeeeeeee
+----B: delivering packet 4 to layer 5
+          TOLAYER3: seq: 1, ack 4, check: 965 00000000000000000000
+          TOLAYER3: scheduling arrival on other side
+            INSERTEVENT: time is 28.409239
+            INSERTEVENT: future time will be 29.889872
+
+EVENT time: 29.889872,  type: 2, fromlayer3  entity: 0
+----A: uncorrupted ACK 4 is received
+----A: ACK 4 is not a duplicate
+
+EVENT time: 32.472843,  type: 2, fromlayer3  entity: 1
+----B: packet 5 is within receive window
+          TOLAYER5: data received by application at B: ffffffffffffffffffff
+----B: delivering packet 5 to layer 5
+          TOLAYER3: seq: 0, ack 5, check: 965 00000000000000000000
+          TOLAYER3: scheduling arrival on other side
+            INSERTEVENT: time is 32.472843
+            INSERTEVENT: future time will be 35.103500
+
+EVENT time: 35.103500,  type: 2, fromlayer3  entity: 0
+----A: uncorrupted ACK 5 is received
+----A: ACK 5 is not a duplicate
+
+EVENT time: 35.741150,  type: 0, timerinterrupt   entity: 0
+----A: time out,resend packets!
+---A: resending packet 0
+          TOLAYER3: seq: 0, ack -1, check: 1939 aaaaaaaaaaaaaaaaaaaa
+          TOLAYER3: scheduling arrival on other side
+            INSERTEVENT: time is 35.741150
+            INSERTEVENT: future time will be 37.616344
+          START TIMER: starting timer at 35.741150
+            INSERTEVENT: time is 35.741150
+            INSERTEVENT: future time will be 51.741150
+
+EVENT time: 37.616344,  type: 2, fromlayer3  entity: 1
+----B: packet 0 is within receive window
+          TOLAYER3: packet being lost
+
+EVENT time: 51.741150,  type: 0, timerinterrupt   entity: 0
+----A: time out,resend packets!
+---A: resending packet 0
+          TOLAYER3: seq: 0, ack -1, check: 1939 aaaaaaaaaaaaaaaaaaaa
+          TOLAYER3: scheduling arrival on other side
+            INSERTEVENT: time is 51.741150
+            INSERTEVENT: future time will be 53.047539
+          START TIMER: starting timer at 51.741150
+            INSERTEVENT: time is 51.741150
+            INSERTEVENT: future time will be 67.741150
+
+EVENT time: 53.047539,  type: 2, fromlayer3  entity: 1
+----B: packet 0 is within receive window
+          TOLAYER3: seq: 0, ack 0, check: 960 00000000000000000000
+          TOLAYER3: scheduling arrival on other side
+            INSERTEVENT: time is 53.047539
+            INSERTEVENT: future time will be 58.626156
+
+EVENT time: 58.626156,  type: 2, fromlayer3  entity: 0
+----A: uncorrupted ACK 0 is received
+----A: ACK 0 is not a duplicate
+          STOP TIMER: stopping timer at 58.626156
+          START TIMER: starting timer at 58.626156
+            INSERTEVENT: time is 58.626156
+            INSERTEVENT: future time will be 74.626160
+
+EVENT time: 74.626160,  type: 0, timerinterrupt   entity: 0
+----A: time out,resend packets!
+---A: resending packet 2
+          TOLAYER3: packet being lost
+          START TIMER: starting timer at 74.626160
+            INSERTEVENT: time is 74.626160
+            INSERTEVENT: future time will be 90.626160
+
+EVENT time: 90.626160,  type: 0, timerinterrupt   entity: 0
+----A: time out,resend packets!
+---A: resending packet 2
+          TOLAYER3: seq: 2, ack -1, check: 1981 cccccccccccccccccccc
+          TOLAYER3: scheduling arrival on other side
+            INSERTEVENT: time is 90.626160
+            INSERTEVENT: future time will be 96.876091
+          START TIMER: starting timer at 90.626160
+            INSERTEVENT: time is 90.626160
+            INSERTEVENT: future time will be 106.626160
+
+EVENT time: 96.876091,  type: 2, fromlayer3  entity: 1
+----B: packet 2 is within receive window
+          TOLAYER3: packet being lost
+
+EVENT time: 106.626160,  type: 0, timerinterrupt   entity: 0
+----A: time out,resend packets!
+---A: resending packet 2
+          TOLAYER3: seq: 2, ack -1, check: 1981 cccccccccccccccccccc
+          TOLAYER3: scheduling arrival on other side
+            INSERTEVENT: time is 106.626160
+            INSERTEVENT: future time will be 111.445442
+          START TIMER: starting timer at 106.626160
+            INSERTEVENT: time is 106.626160
+            INSERTEVENT: future time will be 122.626160
+
+EVENT time: 111.445442,  type: 2, fromlayer3  entity: 1
+----B: packet 2 is within receive window
+          TOLAYER3: seq: 0, ack 2, check: 962 00000000000000000000
+          TOLAYER3: scheduling arrival on other side
+            INSERTEVENT: time is 111.445442
+            INSERTEVENT: future time will be 120.841522
+
+EVENT time: 120.841522,  type: 2, fromlayer3  entity: 0
+----A: uncorrupted ACK 2 is received
+----A: ACK 2 is not a duplicate
+          STOP TIMER: stopping timer at 120.841522
+ Simulator terminated at time 120.841522
+ after attempting to send 8 msgs from layer5
+number of messages dropped due to full window:  2 
+number of valid (not corrupt or duplicate) acknowledgements received at A:  6 
+(note: a single acknowledgement may have acknowledged more than one packet - if cumulative acknowledgements are used)
+number of packet resends by A:  6 
+number of correct packets received at B:  10 
+number of messages delivered to application:  6 
