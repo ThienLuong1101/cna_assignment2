@@ -149,7 +149,6 @@ void A_output(struct msg message)
 */
 void A_input(struct pkt packet)
 {
-
   int found = 0;
   int buffer_index;
 
@@ -279,6 +278,7 @@ void B_input(struct pkt packet)
 {
   struct pkt sendpkt;
   int i;
+  int j;
   int rel_seqnum;
   int buffer_index;
   int in_window = 0;
@@ -317,18 +317,31 @@ void B_input(struct pkt packet)
           expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
           
           /* Deliver consecutive buffered packets */
-          while (buffer_status[0] == 1) {
-            tolayer5(B, rcv_buffer[0].payload);
-            
-            /* Shift buffer */
-            for (i = 0; i < WINDOWSIZE - 1; i++) {
-              rcv_buffer[i] = rcv_buffer[i + 1];
-              buffer_status[i] = buffer_status[i + 1];
-            }
-            buffer_status[WINDOWSIZE - 1] = 0;
-            
-            rcv_base = (rcv_base + 1) % SEQSPACE;
+          i = buffer_index + 1;
+          while (i < WINDOWSIZE && buffer_status[i] == 1) {
+            tolayer5(B, rcv_buffer[i].payload);
+            buffer_status[i] = 0;
             expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
+            i++;
+          }
+          
+          /* Slide the receive window for all delivered packets */
+          rcv_base = expectedseqnum;
+          
+          /* Shift buffer to the left for delivered packets */
+          for (j = 0; j < WINDOWSIZE - (i - buffer_index); j++) {
+            if (j < buffer_index) {
+              rcv_buffer[j] = rcv_buffer[j];
+              buffer_status[j] = buffer_status[j];
+            } else {
+              rcv_buffer[j] = rcv_buffer[j + (i - buffer_index)];
+              buffer_status[j] = buffer_status[j + (i - buffer_index)];
+            }
+          }
+          
+          /* Clear the vacated positions */
+          for (j = WINDOWSIZE - (i - buffer_index); j < WINDOWSIZE; j++) {
+            buffer_status[j] = 0;
           }
         }
       }
