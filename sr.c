@@ -255,7 +255,7 @@ static int B_nextseqnum;   /* the sequence number for the next packets sent by B
 static struct pkt rcv_buffer[WINDOWSIZE];  /* buffer for out-of-order packets */
 static int buffer_status[WINDOWSIZE];      /* track if buffer position is occupied */
 static int rcv_base;                       /* base of receive window */
-
+/* called from layer 3, when a packet arrives for layer 4 at B*/
 void B_input(struct pkt packet)
 {
   struct pkt sendpkt;
@@ -265,8 +265,9 @@ void B_input(struct pkt packet)
   int in_window = 0;
 
   
-  /* if not corrupted */
-  if (!IsCorrupted(packet)) {
+
+  /* if not corrupted and within bounds */
+  if (!IsCorrupted(packet) && packet.seqnum >= 0 && packet.seqnum < SEQSPACE) {
     
     /* Check if packet is within receive window */
     rel_seqnum = packet.seqnum - rcv_base;
@@ -275,32 +276,47 @@ void B_input(struct pkt packet)
       
     if (rel_seqnum < WINDOWSIZE) {
       in_window = 1;
-    }
-    
-    if (in_window) {
-      /* Packet is within receive window */
-      packets_received++;  /* Count all correctly received packets */
+      packets_received++;
       
       if (TRACE > 0)
-        printf("----B: packet %d is correctly received, send ACK!\n", packet.seqnum);
+        printf("Packet %d is within window, add to buffer\n", packet.seqnum);
       
       buffer_index = rel_seqnum;
       
-      /* Store packet if not already buffered (don't buffer duplicates) */
+      /* Store packet if not already buffered */
       if (buffer_status[buffer_index] == 0) {
         rcv_buffer[buffer_index] = packet;
         buffer_status[buffer_index] = 1;
+   
       }
+      
+      /* Send ACK for received packet */
+      sendpkt.acknum = packet.seqnum;
+      sendpkt.seqnum = B_nextseqnum;
+      
+      /* Fill payload with ACK indication */
+      for (i = 0; i < 20; i++)
+        sendpkt.payload[i] = (i < 3) ? "ACK"[i] : '0';
+      
+      sendpkt.checksum = ComputeChecksum(sendpkt);
+     
+      tolayer3(B, sendpkt);
+      B_nextseqnum = (B_nextseqnum + 1) % 2;
       
       /* If this is the expected packet, deliver it and consecutive buffered packets */
       if (packet.seqnum == expectedseqnum) {
         tolayer5(B, packet.payload);
         buffer_status[buffer_index] = 0;
+  
+        
+        rcv_base = (rcv_base + 1) % SEQSPACE;
         expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
         
         /* Deliver consecutive buffered packets */
         while (buffer_status[0] == 1) {
           tolayer5(B, rcv_buffer[0].payload);
+          
+     
           
           /* Shift buffer */
           for (i = 0; i < WINDOWSIZE - 1; i++) {
@@ -315,37 +331,27 @@ void B_input(struct pkt packet)
       }
     }
     else {
-      /* packet is outside window */
+      /* Packet is outside window */
       if (TRACE > 0)
         printf("----B: packet %d is outside window, ignore\n", packet.seqnum);
       
-      /* Still send ACK for old packets (may be duplicate) */
+      /* Still send ACK for packets that are too old */
       sendpkt.acknum = packet.seqnum;
-      goto send_ack;
+      sendpkt.seqnum = B_nextseqnum;
+      
+      for (i = 0; i < 20; i++)
+        sendpkt.payload[i] = (i < 3) ? "ACK"[i] : '0';
+      
+      sendpkt.checksum = ComputeChecksum(sendpkt);
+      tolayer3(B, sendpkt);
+      B_nextseqnum = (B_nextseqnum + 1) % 2;
     }
-    
-    /* Send ACK for received packet */
-    sendpkt.acknum = packet.seqnum;
   }
   else {
-    /* do not send ACK for corrupted packet */
-    return;
+    /* Corrupted packet */
+    if (TRACE > 0)
+      printf("----B: corrupted packet received, do nothing\n");
   }
-
-  send_ack:
-  /* create ACK packet */
-  sendpkt.seqnum = B_nextseqnum;
-  B_nextseqnum = (B_nextseqnum + 1) % 2;
-    
-  /* we don't have any data to send. fill payload with 0's */
-  for (i = 0; i < 20; i++) 
-    sendpkt.payload[i] = '0';  
-
-  /* compute checksum */
-  sendpkt.checksum = ComputeChecksum(sendpkt); 
-
-  /* send out ACK packet */
-  tolayer3 (B, sendpkt);
 }
 void B_init(void)
 {
